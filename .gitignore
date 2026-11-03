@@ -1,0 +1,5 @@
+bridge.config.json
+SKILL.md
+data/*
+!data/.gitignore
+__pycache__/

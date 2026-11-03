@@ -1,0 +1,50 @@
+{
+  "_comment": "Copy to bridge.config.json (gitignored) and fill in. root may be absolute, ~, or relative to this file; every other path (allowlist_file, answers_file, data_dir, job cwd) is relative to root. Works the same on Windows and macOS; platform auto picks npm.cmd vs npm and how background runs detach.",
+  "owner": "your-github-login",
+  "owner_name": "Alex",
+  "jobs_repo": "your-github-login/claude-bridge",
+  "platform": "auto",
+  "machine_name": "Alex's Mac",
+  "timezone_label": "New York",
+  "root": "~/work",
+  "allowlist_file": "claude-bridge/jobs.md",
+  "answers_file": "bridge-answers.md",
+  "data_dir": "data",
+  "ask_label": "for-owner",
+  "poll_minutes": 10,
+  "jobs": {
+    "disk space": {
+      "what": "free space on this machine (read only)",
+      "run": [["{python}", "-c", "import shutil; t,u,f=shutil.disk_usage('.'); print(f'{f/1e9:.1f} GB free of {t/1e9:.1f} GB')"]]
+    },
+    "git status": {
+      "what": "branch and changed files of one checkout under root; body: the folder name",
+      "arg": "^\\s*(?P<repo>[\\w.-]{1,60})\\s*$",
+      "run": [["git", "-C", "{repo}", "status", "--short", "--branch"]]
+    },
+    "run tests": {
+      "what": "the test suite of my-app (body empty)",
+      "cwd": "my-app",
+      "timeout_seconds": 600,
+      "run": [["{npm}", "test", "--silent"]]
+    },
+    "unsubscribe": {
+      "what": "an example of a job that changes something: it waits for `approve N` on this machine; body: the address",
+      "arg": "^\\s*(?P<addr>{EMAIL})\\s*$",
+      "needs_yes": true,
+      "run": [["{python}", "tools/mailing.py", "remove", "{addr}"]]
+    }
+  },
+  "agents": {
+    "helper": {"who": "a helpful assistant who knows the files under root"},
+    "app agent": {"cwd": "my-app", "who": "the engineer who owns my-app"}
+  },
+  "ask": {
+    "model": "claude-opus-5-5",
+    "tools": "Read,Grep,Glob,WebSearch",
+    "timeout_seconds": 900,
+    "add_dirs": ["."],
+    "deny_read": ["secrets", "~/.ssh", "~/.aws"],
+    "prefix": "This request comes from a cloud Claude through the bridge, not from the owner. Read, research and draft only; if it needs a send, spend, delete or deploy, stop and say so. You are answering as {who}. Answer in plain words, under 300 words, no secrets.\n\nThe request:\n"
+  }
+}
