@@ -11,6 +11,36 @@ cloud Claude ──opens issue "job"──▶  private jobs repo  ◀──polls
              ◀──reads the comment──                     ──comments, labels done──
 ```
 
+## A real run
+
+The cloud side opens two issues. One names a job on your allowlist, the other doesn't:
+
+```bash
+gh issue create -R you/claude-bridge -l job -t "delete everything" -b ""
+gh issue create -R you/claude-bridge -l job -t "git status" -b "my-app"
+```
+
+The next poll on your machine runs one and refuses the other:
+
+```
+$ python bridge.py poll
+#2 'delete everything': not allowed
+#3 'git status': done
+```
+
+The cloud side reads the result as a comment on the issue, which is now labeled `done` and closed:
+
+```
+Done on Alex's PC, 2026-11-03 18:50 New York.
+
+## main
+?? notes.txt
+```
+
+`delete everything` gets the comment `not allowed` and the label `rejected`. Nothing ran.
+
+This came from a real run on a throwaway repo, with two polls shown as one and the names changed.
+
 ## What it does
 
 - **Jobs.** The cloud side opens an issue titled with a job name (`git status`) and the argument in the body.
