@@ -93,6 +93,16 @@ def detach_kwargs() -> dict:
     return {"start_new_session": True}
 
 
+CMD_SPECIAL = re.compile(r'[&|<>^%!"()\r\n]')
+
+
+def cmd_exe_refusal(cmd: list) -> str:
+    """Windows hands .cmd and .bat files to cmd.exe even without a shell, and cmd.exe acts on these characters in an argument."""
+    if cmd[0].lower().endswith((".cmd", ".bat")) and any(CMD_SPECIAL.search(tok) for tok in cmd[1:]):
+        return f"{os.path.basename(cmd[0])} runs through cmd.exe on Windows, so its arguments can't hold & | < > ^ % ! \" ( ) or a line break"
+    return ""
+
+
 # ---- output ---------------------------------------------------------------------------------------------------
 
 SCRUB = [
@@ -262,8 +272,11 @@ def run_job(i: dict, approved: bool = False) -> str:
     ctx = {"python": exe("python"), "npm": exe("npm"), "npx": exe("npx"), **args}
     cwd = (CFG["root"] / os.path.expanduser(job.get("cwd", "."))).resolve()
     parts = []
-    for argv in job["run"]:
-        cmd = [tok.format(**ctx) for tok in argv]  # each token is a template; values are inserted, never re-parsed
+    cmds = [[tok.format(**ctx) for tok in argv] for argv in job["run"]]  # each token is a template; values are inserted, never re-parsed
+    refusal = next(filter(None, map(cmd_exe_refusal, cmds)), "")
+    if refusal:
+        return fail(n, name, refusal)  # before any step runs
+    for cmd in cmds:
         try:
             r = subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, encoding="utf-8", errors="replace",
                                timeout=int(job.get("timeout_seconds", 300)), env={**os.environ, "PYTHONIOENCODING": "utf-8"})
@@ -333,6 +346,9 @@ def ask_run(n: int):
     if deny:
         cmd += ["--disallowedTools", *deny]
     cwd = (CFG["root"] / os.path.expanduser(agent.get("cwd", "."))).resolve()
+    refusal = cmd_exe_refusal(cmd)
+    if refusal:
+        fail(n, "ask agent", refusal + ". Asks need the native Claude Code install, not npm's claude.cmd"); label(n, "failed", "running"); return
     try:
         r = subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, encoding="utf-8", errors="replace",
                            timeout=timeout, stdin=subprocess.DEVNULL)
