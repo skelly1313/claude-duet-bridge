@@ -64,7 +64,8 @@ This came from a real run on a throwaway repo, with two polls shown as one and t
 - `needs_yes` jobs and agents are labeled `waiting` until you type `python bridge.py approve N` on the machine.
   A comment saying "approved" does nothing.
 - `ask agent` runs with `--tools Read,Grep,Glob,WebSearch`, `--strict-mcp-config` (no MCP servers), a time limit,
-  and `Read(...)` deny rules for the paths in `deny_read`.
+  and `Read(...)` deny rules for the paths in `deny_read`. It's a one-off run, so your open chat with that agent
+  doesn't see it; set `ask.inbox_dir` to leave one line per ask in `<inbox_dir>/<agent>.md` if that file exists.
 - Output is scrubbed of token shaped strings before posting. Keep the jobs repo private anyway.
 
 ## Setup

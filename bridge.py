@@ -318,6 +318,22 @@ def status_text(jobs: dict) -> str:
     return "\n".join(lines)
 
 
+def note_ask(n: int, key: str, agent: dict, req: str):
+    """A headless ask leaves nothing in the agent's own chat, so ask.inbox_dir, when set, gets one line per ask. Never fails the job."""
+    folder = CFG["ask"].get("inbox_dir")
+    if not folder:
+        return
+    path = (CFG["root"] / os.path.expanduser(folder) / agent.get("inbox", key.replace(" ", "-") + ".md")).resolve()
+    if not path.exists():
+        return
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(f"- {datetime.now():%Y-%m-%d %H:%M} bridge job #{n} asked a one-off {key} agent, which answers on the issue, not this chat "
+                    f"(https://github.com/{REPO}/issues/{n}): {' '.join(req.split())[:300]}\n")
+    except OSError as e:
+        print(f"could not note the ask in {path.name}: {e}")
+
+
 def ask_run(n: int):
     """The child process for one ask agent job: headless Claude, read only tools, no MCP, a time limit."""
     i = json.loads(gh("issue", "view", str(n), "-R", REPO, "--json", "number,title,body,author,labels,state"))
@@ -330,6 +346,7 @@ def ask_run(n: int):
     if not m or key not in agents:
         fail(n, "ask agent", "the body does not name an agent on the list"); label(n, "failed", "running"); return
     agent, ask = agents[key], CFG["ask"]
+    note_ask(n, key, agent, m.group("req"))
     prefix = ask.get("prefix", "This request comes from a cloud Claude through the bridge, not from the owner. Read, research and draft only. "
                                "If it needs a send, spend, delete or deploy, stop and say so in your answer. You are answering as {who}. "
                                "Answer in plain words, under 300 words, no secrets.\n\nThe request:\n")
